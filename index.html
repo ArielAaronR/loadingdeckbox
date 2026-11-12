@@ -139,6 +139,20 @@ label.btn{position:relative}
   .panel-bar{display:none}
   .side-scroll{overflow:visible}
 }
+/* Guided tour: opt-in on first visit, replayable from the Tour button. */
+.tour-shade{position:fixed;inset:0;z-index:50}
+.tour-shade.dim{background:rgba(0,10,20,.55)}
+.tour-spot{position:fixed;z-index:51;border-radius:10px;box-shadow:0 0 0 200vmax rgba(0,10,20,.55),0 0 0 2px var(--accent),0 0 24px var(--stage-glow);pointer-events:none;transition:top .25s,left .25s,width .25s,height .25s}
+.tour-card{position:fixed;z-index:52;width:min(340px,calc(100vw - 32px));background:var(--panel);color:var(--fg);border:1px solid var(--line);border-radius:12px;padding:16px;box-shadow:0 18px 50px rgba(0,0,0,.35);display:flex;flex-direction:column;gap:10px;transition:top .25s,left .25s}
+.tour-card:focus{outline:none}
+.tour-card h2{margin:0;font:700 17px var(--f-display);letter-spacing:.02em}
+.tour-card p{margin:0;font-size:13.5px;line-height:1.5;color:var(--muted)}
+.tour-card .tour-step{font:600 11px var(--f-mono);letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+.tour-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:4px}
+.tour-skip{background:none;border:0;padding:6px 2px;color:var(--muted);font:500 12.5px var(--f-body);cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+.tour-skip:hover{color:var(--fg)}
+.tour-dots{display:flex;gap:4px;margin-right:auto}
+.tour-dots i{width:6px;height:6px;border-radius:50%;background:var(--line)} .tour-dots i.on{background:var(--accent)}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
@@ -150,6 +164,7 @@ label.btn{position:relative}
     <div class="hud">
       <h1 class="brand"><b>Loading Deck</b><small>v33 barebones · snap-on UV skins · 1:1 mm</small></h1>
       <div class="hud-right">
+      <button type="button" class="btn" id="tourBtn" aria-haspopup="dialog">Tour</button>
       <div class="seg" role="group" aria-label="What to design" id="modeSwitch" hidden>
         <button type="button" data-mode="case" aria-pressed="true">3-Bay case</button>
         <button type="button" data-mode="custom" aria-pressed="false">Your model</button>
@@ -1209,6 +1224,111 @@ select(current,false);
       e.currentTarget.focus();
     });
   });
+})();
+</script>
+<script>
+/* Guided tour. First visit: an opt-in invite ("Show me around" / "No thanks"); the answer is remembered per browser.
+   The Tour button replays it anytime. Each step spotlights one part of the app; steps whose target isn't visible are skipped. */
+(()=>{
+  const KEY='loadingdeck:tour:v1';
+  const seen=()=>{ try{ return !!localStorage.getItem(KEY); }catch(e){ return false; } };
+  const mark=v=>{ try{ localStorage.setItem(KEY,v); }catch(e){} };
+  const visible=el=>!!el && el.getClientRects().length>0 && getComputedStyle(el).visibility!=='hidden';
+  const pick=(...sels)=>{ for (const q of sels){ const el=document.querySelector(q); if (visible(el)) return el; } return null; };
+  const STEPS=[
+    {t:()=>pick('.stage'), h:'Live 3D preview', b:'Drag to spin the case; scroll or pinch to zoom. Everything you design shows up here instantly.'},
+    {t:()=>pick('.toolbar'), h:'Camera and lid', b:'Jump to a preset view, or open the lid to see the inside skins.'},
+    {t:()=>pick('#caseSlots','#customPanel'), h:'Pick a skin', b:'Each card is one printable piece of the case. Click a card to edit that skin.'},
+    {t:()=>pick('.side.skins .dock-btn'), h:'Move the panels', b:'Dock either panel to the left or right of the 3D view. Your layout is remembered.'},
+    {t:()=>pick('#edWrap'), h:'The editor', b:'This is the selected skin at true proportions. Drag a layer to move it; the corner handle resizes and the round handle rotates.'},
+    {t:()=>pick('#addText')&&document.getElementById('addText').parentElement, h:'Add photos and text', b:'Upload a photo or add text. You can also drop an image straight onto the editor.'},
+    {t:()=>pick('.layers'), h:'Layers', b:'Reorder, hide, lock or duplicate layers. Select one to change its size, angle, font and text effects.'},
+    {t:()=>pick('.export'), h:'Export for printing', b:'Download this skin as a true-size 600 ppi PNG, or every skin at once as a ZIP. That’s the tour — have fun!'},
+  ];
+  let ui=null, steps=[], i=0, lastFocus=null;
+
+  function build(){
+    const shade=document.createElement('div'); shade.className='tour-shade';
+    const spot=document.createElement('div'); spot.className='tour-spot'; spot.hidden=true;
+    const card=document.createElement('div'); card.className='tour-card'; card.tabIndex=-1;
+    card.setAttribute('role','dialog'); card.setAttribute('aria-modal','true'); card.setAttribute('aria-labelledby','tourTitle'); card.setAttribute('aria-describedby','tourBody');
+    document.body.append(shade,spot,card);
+    card.addEventListener('keydown',onKey);
+    addEventListener('resize',place); addEventListener('scroll',place,true);
+    return {shade,spot,card};
+  }
+  function close(value){
+    if (!ui) return; mark(value);
+    removeEventListener('resize',place); removeEventListener('scroll',place,true);
+    ui.shade.remove(); ui.spot.remove(); ui.card.remove(); ui=null;
+    if (lastFocus && document.contains(lastFocus)) lastFocus.focus();
+  }
+  function onKey(e){
+    if (e.key==='Escape'){ e.preventDefault(); close(steps.length?'done':'dismissed'); return; }
+    if (steps.length && (e.key==='ArrowRight'||e.key==='ArrowLeft')){
+      e.preventDefault(); go(i+(e.key==='ArrowRight'?1:-1)); return; }
+    if (e.key==='Tab'){ const f=[...ui.card.querySelectorAll('button')]; if(!f.length) return;
+      const a=f[0], z=f[f.length-1];
+      if (e.shiftKey && (document.activeElement===a||document.activeElement===ui.card)){ e.preventDefault(); z.focus(); }
+      else if (!e.shiftKey && document.activeElement===z){ e.preventDefault(); a.focus(); } }
+  }
+  function card(stepLabel,title,body,buttons){
+    const c=ui.card; c.replaceChildren();
+    if (stepLabel){ const s=document.createElement('div'); s.className='tour-step'; s.textContent=stepLabel; c.append(s); }
+    const h=document.createElement('h2'); h.id='tourTitle'; h.textContent=title;
+    const p=document.createElement('p'); p.id='tourBody'; p.textContent=body;
+    const row=document.createElement('div'); row.className='tour-actions';
+    if (steps.length){ const d=document.createElement('div'); d.className='tour-dots'; d.setAttribute('aria-hidden','true');
+      steps.forEach((_,k)=>{ const dot=document.createElement('i'); if(k===i) dot.className='on'; d.append(dot); }); row.append(d); }
+    for (const [label,cls,fn,id] of buttons){ const b=document.createElement('button'); b.type='button'; b.className=cls; b.textContent=label; if(id) b.id=id; b.addEventListener('click',fn); row.append(b); }
+    c.append(h,p,row);
+  }
+  function invite(){
+    lastFocus=document.activeElement; ui=build(); steps=[]; ui.shade.classList.add('dim');
+    card('','New to Loading Deck?','Take a one-minute tour of how to pick a skin, design it and export it for printing.',[
+      ['No thanks','tour-skip',()=>close('dismissed'),'tourNo'],
+      ['Show me around','btn primary',start,'tourYes']]);
+    centre(); ui.card.querySelector('#tourYes').focus();
+  }
+  function start(){
+    if (!ui){ lastFocus=document.activeElement; ui=build(); }
+    steps=STEPS.filter(s=>s.t()); i=0; go(0);
+  }
+  function go(n){
+    if (n<0||n>=steps.length) return; i=n; const s=steps[i], last=i===steps.length-1;
+    card(`Step ${i+1} of ${steps.length}`, s.h, s.b, [
+      ['Skip tour','tour-skip',()=>close('done'),'tourSkip'],
+      ...(i>0?[['Back','btn',()=>go(i-1),'tourBack']]:[]),
+      [last?'Done':'Next','btn primary',()=>last?close('done'):go(i+1),'tourNext']]);
+    const el=s.t(); if (el) el.scrollIntoView({block:'nearest',inline:'nearest'});
+    place(); ui.card.querySelector('#tourNext').focus();
+  }
+  function centre(){
+    const c=ui.card.getBoundingClientRect();
+    ui.card.style.left=Math.max(16,(innerWidth-c.width)/2)+'px'; ui.card.style.top=Math.max(16,(innerHeight-c.height)/2)+'px';
+  }
+  function place(){
+    if (!ui) return;
+    if (!steps.length){ centre(); return; }
+    const el=steps[i].t();
+    if (!el){ ui.spot.hidden=true; ui.shade.classList.add('dim'); centre(); return; }
+    ui.shade.classList.remove('dim'); ui.spot.hidden=false;
+    const vw=innerWidth, vh=innerHeight, pad=6, m=16, gap=12;
+    const r=el.getBoundingClientRect();
+    const L=Math.max(4,r.left-pad), T=Math.max(4,r.top-pad), R=Math.min(vw-4,r.right+pad), B=Math.min(vh-4,r.bottom+pad);
+    Object.assign(ui.spot.style,{left:L+'px',top:T+'px',width:Math.max(0,R-L)+'px',height:Math.max(0,B-T)+'px'});
+    const c=ui.card.getBoundingClientRect(), cw=c.width, ch=c.height;
+    const clampX=x=>Math.min(Math.max(m,x),vw-cw-m), clampY=y=>Math.min(Math.max(m,y),vh-ch-m);
+    let x, y;
+    if (vw-R-gap>=cw+m){ x=R+gap; y=clampY(T); }            // right of target
+    else if (L-gap>=cw+m){ x=L-gap-cw; y=clampY(T); }       // left
+    else if (vh-B-gap>=ch+m){ y=B+gap; x=clampX(L); }       // below
+    else if (T-gap>=ch+m){ y=T-gap-ch; x=clampX(L); }       // above
+    else { x=clampX(L+(R-L-cw)/2); y=clampY(B-ch-24); }     // target fills the screen: sit inside its lower edge
+    ui.card.style.left=x+'px'; ui.card.style.top=y+'px';
+  }
+  document.getElementById('tourBtn').addEventListener('click',()=>{ if (ui) return; start(); });
+  if (!seen()) setTimeout(()=>{ if (!ui && !seen()) invite(); }, 900);
 })();
 </script>
 </body>

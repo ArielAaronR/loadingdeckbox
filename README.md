@@ -14,7 +14,7 @@ It's one static file. Upload `index.html` to any static host:
 
 | Host | How |
 |---|---|
-| Netlify | Drag the `skin-studio` folder onto app.netlify.com/drop |
+| Netlify | Import the GitHub repo (redeploys on every push), or drag this folder onto app.netlify.com/drop |
 | Vercel | `npx vercel` in this folder, or import the repo; no build step |
 | Cloudflare Pages | New project → upload `index.html`; build command: none |
 | GitHub Pages | Commit `index.html` to a repo → Settings → Pages → deploy from branch |
@@ -42,6 +42,14 @@ const FEATURES={ customModel:false };
   Off by default. Set to `true` to show it to everyone, or preview it yourself by adding
   `#custom-model` to the end of the page URL.
 
+## Guided tour
+
+First-time visitors get an opt-in invite ("Show me around" / "No thanks") that spotlights each part
+of the app in a few short steps. Their choice is remembered in the browser (`localStorage` key
+`loadingdeck:tour:v1`), and the **Tour** button in the top bar replays it anytime. The steps are the
+`STEPS` list in the tour script at the bottom of `index.html`; a step whose target isn't on screen
+(e.g. the dock buttons on phones) is skipped automatically.
+
 ## Exports
 
 - Hosted on your site: exports are normal browser downloads.
@@ -54,7 +62,7 @@ const FEATURES={ customModel:false };
 cd tests
 npm install
 npm run setup     # installs Chromium for Playwright + makes the test photos
-npm test          # 38 core + 18 layer + 4 hosted-download + 15 "Your model" checks
+npm test          # 38 core + 18 layer + 4 hosted-download + 15 "Your model" + 13 tour checks
 ```
 
 The tests serve `../index.html` and route the CDN libraries to the local npm copies, so they run offline.

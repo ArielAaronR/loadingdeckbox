@@ -2,7 +2,9 @@
 const {chromium}=require('playwright'),fs=require('fs');
 const W=process.env.APP||'../';   // folder holding index.html
 const res=[]; const t=async(n,f)=>{ try{ const r=await f(); res.push([n,r!==false]); console.log((r!==false?'PASS ':'FAIL ')+n+(typeof r==='string'?' — '+r:'')); }catch(e){ res.push([n,false]); console.log('FAIL '+n+' — '+e.message.split('\n')[0]); } };
-(async()=>{const b=await chromium.launch({args:['--use-gl=swiftshader','--enable-unsafe-swiftshader']});const c=await b.newContext({viewport:{width:1440,height:900}});const p=await c.newPage();const errs=[];p.on('pageerror',e=>errs.push(e.message));
+(async()=>{const b=await chromium.launch({args:['--use-gl=swiftshader','--enable-unsafe-swiftshader']});const c=await b.newContext({viewport:{width:1440,height:900}});const p=await c.newPage();
+await p.addInitScript(()=>{ try{ localStorage.setItem('loadingdeck:tour:v1','dismissed'); }catch(e){} });   // tour invite is covered by tour_e2e.js
+const errs=[];p.on('pageerror',e=>errs.push(e.message));
 p.on('console',m=>{ if(m.type()==='error'&&!/ERR_FAILED/.test(m.text())) errs.push(m.text()); });
 await p.addInitScript(()=>{window.__saves=[];window.claude={use:async n=>n==='downloads'?{save:async({filename,data})=>{window.__saves.push({filename,size:data.size});return{status:'saved'}}}:null};});
 await p.route('**/*',r=>{const u=r.request().url();

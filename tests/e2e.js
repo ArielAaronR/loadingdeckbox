@@ -12,6 +12,8 @@ const pngInfo=b=>{ const dv=new DataView(b.buffer,b.byteOffset); const w=dv.getU
 async function open(b,{width,height,scheme='light',mock=true,blockThree=false}){
   const ctx=await b.newContext({viewport:{width,height},colorScheme:scheme});
   const p=await ctx.newPage(); p.errors=[];
+await p.addInitScript(()=>{ try{ localStorage.setItem('loadingdeck:tour:v1','dismissed'); }catch(e){} });   // tour invite is covered by tour_e2e.js
+
   p.on('pageerror',e=>p.errors.push(e.message)); p.on('console',m=>{ if(m.type()==='error'&&!/ERR_FAILED|fonts/.test(m.text())) p.errors.push(m.text()); });
   if (!mock) await p.addInitScript(()=>{ window.claude={use:async()=>null}; });   // inside Claude, but saving not allowed
   if (mock) await p.addInitScript(()=>{ window.__saves=[]; window.claude={use:async n=>n==='downloads'?{save:async({filename,data})=>{

@@ -4,7 +4,7 @@
   "description": "End-to-end tests for Loading Deck (Playwright, Chromium). The CDN libraries are served from these local copies.",
   "scripts": {
     "setup": "npx playwright install chromium && node make_fixtures.js",
-    "test": "node e2e.js && node layers_e2e.js && node standalone_e2e.js && node custom_e2e.js && HASH='#custom-model' node custom_e2e.js"
+    "test": "node e2e.js && node layers_e2e.js && node standalone_e2e.js && node custom_e2e.js && HASH='#custom-model' node custom_e2e.js && node tour_e2e.js"
   },
   "devDependencies": { "playwright": "^1.48.0", "three": "0.160.0", "jszip": "3.10.1", "axe-core": "4.10.2" }
 }

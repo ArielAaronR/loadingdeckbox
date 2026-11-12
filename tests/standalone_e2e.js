@@ -1,7 +1,9 @@
 // Hosted-site check: no Claude runtime, so exports must arrive as normal browser downloads
 const {chromium}=require('playwright'),fs=require('fs');
 const W=process.env.APP||'../';
-(async()=>{ const b=await chromium.launch({args:['--use-gl=swiftshader','--enable-unsafe-swiftshader']}); const c=await b.newContext({acceptDownloads:true,viewport:{width:1440,height:900}}); const p=await c.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(e.message));
+(async()=>{ const b=await chromium.launch({args:['--use-gl=swiftshader','--enable-unsafe-swiftshader']}); const c=await b.newContext({acceptDownloads:true,viewport:{width:1440,height:900}}); const p=await c.newPage();
+await p.addInitScript(()=>{ try{ localStorage.setItem('loadingdeck:tour:v1','dismissed'); }catch(e){} });   // tour invite is covered by tour_e2e.js
+ const errs=[]; p.on('pageerror',e=>errs.push(e.message));
   await p.route('**/*',r=>{const u=r.request().url();
     if(u.includes('three@0.160.0/'))return r.fulfill({path:'node_modules/three/'+u.split('three@0.160.0/')[1],contentType:'application/javascript',headers:{'Access-Control-Allow-Origin':'*'}});
     if(u.startsWith('http://app/'))return r.fulfill({body:fs.readFileSync(W+'index.html','utf8'),contentType:'text/html'}); return r.abort(); });
