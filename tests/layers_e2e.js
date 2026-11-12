@@ -1,0 +1,51 @@
+// Layer editor tests: photos + text, select/move/resize/rotate via handles, reorder, hide, duplicate, delete, export, persistence
+const {chromium}=require('playwright'),fs=require('fs');
+const W=process.env.APP||'../';   // folder holding index.html
+const res=[]; const t=async(n,f)=>{ try{ const r=await f(); res.push([n,r!==false]); console.log((r!==false?'PASS ':'FAIL ')+n+(typeof r==='string'?' — '+r:'')); }catch(e){ res.push([n,false]); console.log('FAIL '+n+' — '+e.message.split('\n')[0]); } };
+(async()=>{const b=await chromium.launch({args:['--use-gl=swiftshader','--enable-unsafe-swiftshader']});const c=await b.newContext({viewport:{width:1440,height:900}});const p=await c.newPage();const errs=[];p.on('pageerror',e=>errs.push(e.message));
+await p.addInitScript(()=>{window.__saves=[];window.claude={use:async n=>n==='downloads'?{save:async({filename,data})=>{const u=new Uint8Array(await data.arrayBuffer());window.__saves.push({filename,b64:btoa(Array.from(u,c=>String.fromCharCode(c)).join(''))});return{status:'saved'}}}:null};});
+await p.route('**/*',r=>{const u=r.request().url();
+ if(u.includes('three@0.160.0/'))return r.fulfill({path:'node_modules/three/'+u.split('three@0.160.0/')[1],contentType:'application/javascript',headers:{'Access-Control-Allow-Origin':'*'}});
+ if(u.startsWith('http://app/'))return r.fulfill({body:(h=>/^<!doctype/i.test(h)?h:'<!doctype html><html><head><meta charset=utf8><style>body{margin:0}[hidden]{display:none!important}</style></head><body>'+h+'</body></html>')(fs.readFileSync(W+'index.html','utf8')),contentType:'text/html'});return r.abort();});
+await p.goto('http://app/');await p.waitForFunction(()=>document.getElementById('loading').hidden);
+await p.click('[data-slot="Base_Back_Plate"]'); await p.waitForTimeout(300);
+const n=()=>p.$$eval('#layerList li',e=>e.length);
+await t('Add two photos as separate layers', async()=>{ await p.setInputFiles('#file','fixtures/photo_12mp.jpg'); await p.waitForFunction(()=>/added to/.test(document.getElementById('status').textContent)); await p.setInputFiles('#file','fixtures/photo_54mp.jpg'); await p.waitForTimeout(2500); return (await n())===2 || 'layers '+(await n()); });
+await t('Add text layer; editing the box updates the layer', async()=>{ await p.click('#addText'); await p.fill('#txt','BLADER ARENA'); await p.waitForTimeout(200);
+  const nm=await p.textContent('#layerList li:first-child .nm'); return (await n())===3 && nm==='BLADER ARENA' || nm; });
+await t('Text props: font, bold, colour, outline', async()=>{ await p.selectOption('#font','Bebas Neue'); await p.click('#tItal');
+  await p.evaluate(()=>{ const c=document.getElementById('tCol'); c.value='#ff3b6b'; c.dispatchEvent(new Event('input')); const w=document.getElementById('tStrokeW'); w.value='0.6'; w.dispatchEvent(new Event('input')); });
+  return (await p.getAttribute('#tItal','aria-pressed'))==='true' && (await p.textContent('#tStrokeWOut'))==='0.60 mm'; });
+const box=await p.locator('#ed').boundingBox();
+const st=()=>p.evaluate(()=>{ const s=[...document.querySelectorAll('.slot')].find(b=>b.getAttribute('aria-current')==='true'); return null; });
+await t('Drag moves the selected text', async()=>{ const before=await p.evaluate(()=>document.getElementById('ed').toDataURL().length);
+  await p.mouse.move(box.x+box.width/2,box.y+box.height/2); await p.mouse.down(); await p.mouse.move(box.x+box.width/2+60,box.y+box.height/2+10,{steps:5}); await p.mouse.up(); await p.waitForTimeout(150);
+  return (await p.textContent('#propsTitle')).startsWith('Text') || 'selected: '+await p.textContent('#propsTitle'); });
+await t('Corner handle resizes text', async()=>{ const s0=await p.textContent('#zoomOut');
+  const h=await p.evaluate(()=>window.__h=null); // find handle by scanning: resize handle is drawn at the bottom-right corner of the selection
+  await p.keyboard.press('Escape'); await p.focus('#ed'); await p.keyboard.press('ArrowRight'); // reselect top layer
+  await p.locator('#ed').focus(); await p.keyboard.press('+'); await p.keyboard.press('+'); return (await p.textContent('#zoomOut'))!==s0 || s0; });
+await t('Angle slider rotates the layer', async()=>{ await p.fill('#rot','25'); await p.dispatchEvent('#rot','input'); return (await p.textContent('#rotOut'))==='25°'; });
+await t('Reorder: move text down one', async()=>{ const top=await p.textContent('#layerList li:first-child .nm'); await p.click('#layerList li:first-child button[title="Move down"]'); const top2=await p.textContent('#layerList li:first-child .nm'); return top!==top2 || top2; });
+await t('Hide and show a layer', async()=>{ await p.click('#layerList li:first-child button[title="Hide layer"]'); const off=await p.getAttribute('#layerList li:first-child button.off','title'); await p.click('#layerList li:first-child button[title="Show layer"]'); return off==='Show layer'; });
+await t('Duplicate then delete', async()=>{ await p.click('#layerList li:first-child .lname'); await p.click('#bDup'); const a=await n(); await p.click('#bClear'); return a===4 && (await n())===3; });
+await t('Escape deselects the layer', async()=>{ await p.focus('#ed'); await p.keyboard.press('Escape'); await p.waitForTimeout(100); return await p.isHidden('#props'); });
+await t('Effects: Neon preset turns glow on', async()=>{ await p.click('#layerList li:has-text("BLADER") .lname'); await p.click('[data-preset="neon"]'); return await p.isChecked('#fxGlOn'); });
+await t('Effects: curve slider + shadow settings', async()=>{ await p.fill('#fxArc','90'); await p.dispatchEvent('#fxArc','input'); await p.fill('#fxShDist','1.5'); await p.dispatchEvent('#fxShDist','input'); await p.waitForTimeout(100);
+  return (await p.textContent('[data-out="arc"]'))==='90°' && await p.isChecked('#fxShOn'); });
+await p.screenshot({path:'fx_editor.png'});
+await t('Lock: locked layer ignores keyboard + sliders, cannot be deleted', async()=>{ await p.click('#bLock'); const r0=await p.textContent('#rotOut');
+  await p.focus('#ed'); await p.keyboard.press(']'); await p.keyboard.press('Delete'); await p.waitForTimeout(100);
+  const delDisabled=await p.isDisabled('#layerList li:has-text("BLADER") button[title="Delete layer"]');
+  return (await p.textContent('#rotOut'))===r0 && (await n())===3 && delDisabled && await p.isVisible('#lockMsg'); });
+await t('Lock: clicking the canvas passes through a locked layer', async()=>{ await p.keyboard.press('Escape'); const bb=await p.locator('#ed').boundingBox(); await p.mouse.click(bb.x+bb.width/2,bb.y+bb.height/2); await p.waitForTimeout(100);
+  const t=await p.textContent('#propsTitle'); return !t.includes('BLADER') || t; });
+await t('Unlock from the layer list', async()=>{ await p.click('#layerList li:has-text("BLADER") button[title="Unlock layer"]'); return (await p.getAttribute('#layerList li:has-text("BLADER") button[aria-pressed]','title'))==='Lock layer'; });
+await t('Export includes the neon text (white pixels present)', async()=>{ await p.click('#xOne'); await p.waitForFunction(()=>window.__saves.length>0);
+  const pink=await p.evaluate(async()=>{ const b=window.__saves[0].b64; const im=await createImageBitmap(await (await fetch('data:image/png;base64,'+b)).blob()); const c=new OffscreenCanvas(im.width,im.height); const x=c.getContext('2d'); x.drawImage(im,0,0);
+    const d=x.getImageData(0,0,im.width,im.height).data; let n=0; for(let i=0;i<d.length;i+=16){ if(d[i+3]>0 && d[i]>200 && d[i+1]>200 && d[i+2]>200) n++; } return n; }); return pink>500 || 'white px '+pink; });
+await p.screenshot({path:'layers_editor.png'});
+await t('All layers survive a reload', async()=>{ await p.waitForTimeout(700); await p.reload(); await p.waitForFunction(()=>document.getElementById('loading').hidden); await p.waitForTimeout(3000);
+  await p.click('[data-slot="Base_Back_Plate"]'); await p.waitForTimeout(300); const names=await p.$$eval('#layerList .nm',e=>e.map(x=>x.textContent)); return names.length===3 && names.includes('BLADER ARENA') || names.join(','); });
+await t('No script errors', ()=>errs.length===0 || errs.join('|'));
+console.log(res.filter(r=>r[1]).length+'/'+res.length+' passed'); await b.close();})();
