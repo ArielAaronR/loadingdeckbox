@@ -1,4 +1,4 @@
-# 3-Bay Case Skin Studio
+# Loading Deck
 
 A single-page web app for designing UV-printable skins for the 3-Bay Beyblade X case:
 a live 3D preview, per-skin layers (photos + text with effects, lock, reorder),

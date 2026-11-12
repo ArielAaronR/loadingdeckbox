@@ -1,4 +1,4 @@
-// End-to-end tests for 3-Bay Case Skin Studio (Playwright, Chromium).
+// End-to-end tests for Loading Deck (Playwright, Chromium).
 // CDN libraries are served from local npm copies; window.claude.downloads is mocked to capture exports.
 const {chromium}=require('playwright'), fs=require('fs');
 const W=process.env.APP||'../';   // folder holding index.html

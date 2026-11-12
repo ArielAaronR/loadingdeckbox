@@ -1,7 +1,7 @@
 {
-  "name": "skin-studio-tests",
+  "name": "loading-deck-tests",
   "private": true,
-  "description": "End-to-end tests for 3-Bay Case Skin Studio (Playwright, Chromium). The CDN libraries are served from these local copies.",
+  "description": "End-to-end tests for Loading Deck (Playwright, Chromium). The CDN libraries are served from these local copies.",
   "scripts": {
     "setup": "npx playwright install chromium && node make_fixtures.js",
     "test": "node e2e.js && node layers_e2e.js && node standalone_e2e.js && node custom_e2e.js && HASH='#custom-model' node custom_e2e.js"
