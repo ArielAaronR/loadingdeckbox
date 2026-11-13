@@ -44,6 +44,31 @@ Print files for both are in `print/`:
 - `3Bay_Case_Strap_Loops_P2S.3mf` (v33)
 - `3Bay_Case_Rectangle_P2S.3mf` (v35)
 
+## Lid divider
+
+An optional frame that splits the lid into three bays, with walls between the 01 · 02 · 03 numbers.
+It's a separate print that presses in under the lid liner, so the liner stays a flat plate you can
+still UV print.
+
+- **On the site:** the **Lid divider** button (next to Open lid) shows it in the 3D view. On the
+  *Lid liner* skin, shaded strips show where the frame covers the liner (a design guide only; exports
+  are unchanged), and **Divider print file · 3MF** downloads the frame for the selected case version.
+  The visitor's choice is remembered in their browser.
+- **Print files:** `print/3Bay_Lid_Divider_Strap_Loops.3mf` (172.2 × 57.2 × 22.5 mm) and
+  `print/3Bay_Lid_Divider_Rectangle.3mf` (167.1 × 57.2 × 22.5 mm). Flat side down, no supports.
+- **Fit:** 1.6 mm walls centred between the bays leave 0.8 mm each side to the 50.8 mm bay openings.
+  Each wall's back edge is cut so it clears the base, bay insert and latch through the whole lid
+  swing (0.5 mm clearance), and the frame stays clear of the liner's retaining nubs and the hinge-corner
+  blocks. It's a press fit between the lid's end walls: if it's too tight, regenerate with
+  `--end-gap 0.1`.
+- **Regenerate** (e.g. after changing the case model, or to change wall thickness/depth):
+
+  ```bash
+  python3 -m venv .venv && .venv/bin/pip install numpy manifold3d
+  .venv/bin/python tools/lid_divider.py --help
+  .venv/bin/python tools/lid_divider.py            # rewrites the two 3MFs and the <script id="lidDivider"> block
+  ```
+
 ## Feature flags
 
 Near the top of the editor script:
@@ -76,7 +101,7 @@ of the app in a few short steps. Their choice is remembered in the browser (`loc
 cd tests
 npm install
 npm run setup     # installs Chromium for Playwright + makes the test photos
-npm test          # 38 core + 18 layer + 12 case-version + 4 hosted-download + 15 "Your model" + 13 tour checks
+npm test          # 38 core + 18 layer + 12 case-version + 13 divider + 4 hosted-download + 15 "Your model" + 13 tour checks
 ```
 
 The tests serve `../index.html` and route the CDN libraries to the local npm copies, so they run offline.
