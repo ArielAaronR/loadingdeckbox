@@ -1,7 +1,7 @@
 // Guided tour: opt-in invite on first visit, step through, remembered choice, replay from the Tour button, phone layout
 const {chromium}=require('playwright'),fs=require('fs');
 const W=process.env.APP||'../';   // folder holding index.html
-const res=[]; const t=async(n,f)=>{ try{ const r=await f(); res.push([n,r!==false]); console.log((r!==false?'PASS ':'FAIL ')+n+(typeof r==='string'?' — '+r:'')); }catch(e){ res.push([n,false]); console.log('FAIL '+n+' — '+e.message.split('\n')[0]); } };
+const res=[]; const t=async(n,f)=>{ try{ const r=await f(); res.push([n,r===true||r===undefined]); console.log((r===true||r===undefined?'PASS ':'FAIL ')+n+(typeof r==='string'?' — '+r:'')); }catch(e){ res.push([n,false]); console.log('FAIL '+n+' — '+e.message.split('\n')[0]); } };
 async function open(b,viewport){
   const c=await b.newContext({viewport}); const p=await c.newPage(); p.errs=[]; p.on('pageerror',e=>p.errs.push(e.message));
   await p.route('**/*',r=>{const u=r.request().url();

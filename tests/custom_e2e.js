@@ -1,7 +1,7 @@
 // "Your model" mode: upload STL, click faces to add printable areas, design, export, reload
 const {chromium}=require('playwright'),fs=require('fs');
 const W=process.env.APP||'../';   // folder holding index.html
-const res=[]; const t=async(n,f)=>{ try{ const r=await f(); res.push([n,r!==false]); console.log((r!==false?'PASS ':'FAIL ')+n+(typeof r==='string'?' — '+r:'')); }catch(e){ res.push([n,false]); console.log('FAIL '+n+' — '+e.message.split('\n')[0]); } };
+const res=[]; const t=async(n,f)=>{ try{ const r=await f(); res.push([n,r===true||r===undefined]); console.log((r===true||r===undefined?'PASS ':'FAIL ')+n+(typeof r==='string'?' — '+r:'')); }catch(e){ res.push([n,false]); console.log('FAIL '+n+' — '+e.message.split('\n')[0]); } };
 (async()=>{const b=await chromium.launch({args:['--use-gl=swiftshader','--enable-unsafe-swiftshader']});const c=await b.newContext({viewport:{width:1440,height:900}});const p=await c.newPage();
 await p.addInitScript(()=>{ try{ localStorage.setItem('loadingdeck:tour:v1','dismissed'); }catch(e){} });   // tour invite is covered by tour_e2e.js
 const errs=[];p.on('pageerror',e=>errs.push(e.message));
@@ -13,7 +13,7 @@ await p.route('**/*',r=>{const u=r.request().url();
 await p.goto('http://app/'+(process.env.HASH||''));await p.waitForFunction(()=>document.getElementById('loading').hidden);
 if (!process.env.HASH){ await t('Flag off: mode switch hidden', async()=>await p.isHidden('#modeSwitch')); console.log(res.filter(r=>r[1]).length+'/'+res.length+' passed'); await b.close(); return; }
 await t('Switch to Your model shows the upload card', async()=>{ await p.click('[data-mode="custom"]'); await p.waitForTimeout(300); return await p.isVisible('#customEmpty') && await p.isHidden('#caseSlots') && await p.isHidden('#lidBtn'); });
-await t('Upload an STL', async()=>{ await p.setInputFiles('#modelFile','fixtures/model_test.stl'); await p.waitForFunction(()=>/loaded/.test(document.getElementById('status').textContent),null,{timeout:20000}); return await p.textContent('#status'); });
+await t('Upload an STL', async()=>{ await p.setInputFiles('#modelFile','fixtures/model_test.stl'); await p.waitForFunction(()=>/loaded/.test(document.getElementById('status').textContent),null,{timeout:20000}); const st=await p.textContent('#status'); console.log('   ('+st+')'); return /loaded/.test(st) || st; });
 const gl=await p.locator('#gl').boundingBox(); const center=async()=>{ await p.waitForTimeout(900); await p.mouse.click(gl.x+gl.width/2, gl.y+gl.height/2); await p.waitForTimeout(500); };
 await t('Click top face → printable area with the hole traced', async()=>{ await center(); const d=await p.$$eval('#slotsCustom .slot .dim',e=>e.map(x=>x.textContent)); const nm=await p.$$eval('#slotsCustom .slot .nm',e=>e.map(x=>x.textContent));
   return (d.length===1 && d[0].startsWith('160.0 × 80.0') && nm[0].startsWith('Top')) || (nm.join(',')+' | '+d.join(',')); });
@@ -28,7 +28,7 @@ await t('Model, faces and layers survive a reload', async()=>{ await p.waitForTi
   await p.click('[data-mode="custom"]'); await p.waitForTimeout(1500); const n=await p.$$eval('#slotsCustom .slot',e=>e.length); const tag=await p.textContent('#slotsCustom .slotrow:first-child .tag');
   return n===2 && tag==='Your art' || `${n} faces, tag ${tag}`; });
 await t('Remove a face', async()=>{ await p.click('#slotsCustom .slotrow:last-child .ibtn'); return (await p.$$eval('#slotsCustom .slot',e=>e.length))===1; });
-await t('Back to case mode: case skins intact', async()=>{ await p.click('[data-mode="case"]'); await p.waitForTimeout(400); return await p.isVisible('#caseSlots') && (await p.$$eval('#slotsOut .slot',e=>e.length))===6 && await p.isVisible('#lidBtn'); });
+await t('Back to case mode: case skins intact', async()=>{ await p.click('[data-mode="case"]'); await p.waitForTimeout(400); return await p.isVisible('#caseSlots') && (await p.$$eval('#slotsOut .slot',e=>e.filter(x=>x.offsetParent!==null).length))===6 && await p.isVisible('#lidBtn'); });
 await t('Remove model (two clicks)', async()=>{ await p.click('[data-mode="custom"]'); await p.click('#removeModel'); await p.click('#removeModel'); await p.waitForTimeout(300); return await p.isVisible('#customEmpty'); });
 await t('Rejects a non-model file', async()=>{ await p.setInputFiles('#modelFile','fixtures/not_image.txt'); await p.waitForTimeout(200); return /STL, 3MF, OBJ or GLB/.test(await p.textContent('#status')); });
 await t('No script errors', ()=>errs.length===0 || errs.slice(0,3).join(' | '));

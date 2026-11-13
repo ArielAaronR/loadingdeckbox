@@ -32,13 +32,17 @@ To self-host these instead (no third-party requests), download the same versions
 
 ## Case versions
 
-The studio has a **Strap loops / Plain ends** switch (top right, next to the colour).
-Plain ends swaps the base model and gives End 01 / End 03 full skins with no strap cut-out;
-exports follow the selected version. The visitor's choice is remembered in their browser.
+The studio has a **Strap loops / Rectangle** switch (top right, next to the colour).
+- **Strap loops (v33)**: bevelled end caps with strap bars; end skins go around the bars.
+- **Rectangle (v35)**: no end caps, flush rectangular ends. Each end gets a base skin and a lid skin
+  (*Base end* / *Lid end*), the back skin and lid liner get the moved hinge notches, and the
+  inside-cap skins disappear.
+
+Exports and the ZIP name follow the selected version. The visitor's choice is remembered in their browser.
 
 Print files for both are in `print/`:
 - `3Bay_Case_Strap_Loops_P2S.3mf` (v33)
-- `3Bay_Case_Plain_Ends_P2S.3mf` (v34)
+- `3Bay_Case_Rectangle_P2S.3mf` (v35)
 
 ## Feature flags
 

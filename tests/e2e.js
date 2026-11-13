@@ -5,7 +5,7 @@ const W=process.env.APP||'../';   // folder holding index.html
 const JSZip=require('jszip');
 const results=[]; let page;
 const ok=(name,pass,info='')=>{results.push({name,pass,info}); console.log(`${pass?'PASS':'FAIL'}  ${name}${info?'  — '+info:''}`);};
-async function t(name,fn){ try{ const r=await fn(); ok(name,r!==false,typeof r==='string'?r:''); }catch(e){ ok(name,false,e.message.split('\n')[0]); } }
+async function t(name,fn){ try{ const r=await fn(); ok(name,r===true||r===undefined,typeof r==='string'?r:''); }catch(e){ ok(name,false,e.message.split('\n')[0]); } }
 const pngInfo=b=>{ const dv=new DataView(b.buffer,b.byteOffset); const w=dv.getUint32(16), h=dv.getUint32(20);
   const i=b.indexOf(Buffer.from('pHYs')); const ppm=i>0?dv.getUint32(i+4):0; return {w,h,ppi:Math.round(ppm*0.0254)}; };
 
@@ -39,8 +39,8 @@ const mainColor=async(sel)=>page.evaluate(s=>{ const c=document.querySelector(s)
 
   await t('Loads with no script errors', ()=> page.errors.length===0 || page.errors.join(' | '));
   await t('3D model is in the scene (lid, base, rocker, insert)', ()=>page.evaluate(()=>!!document.getElementById('loading').hidden));
-  await t('Twelve skin slots listed (6 outside, 6 inside)', async()=>{ const a=await page.$$eval('#slotsOut .slot',e=>e.length), c=await page.$$eval('#slotsIn .slot',e=>e.length); return a===6&&c===6 || `${a}/${c}`; });
-  await t('Slot sizes match the CAD skins', async()=>{ const d=await page.$$eval('.slot .dim',e=>e.map(x=>x.textContent)); const want=['177.8 × 72.1','168.0 × 23.1','168.0 × 23.1','168.0 × 40.8','45.1 × 37.6','45.1 × 37.6','171.9 × 58.3','171.0 × 38.7','60.1 × 24.8','60.1 × 24.8','20.5 × 55.0','20.5 × 55.0'];
+  await t('Twelve skin slots listed (6 outside, 6 inside)', async()=>{ const a=await page.$$eval('#slotsOut .slot',e=>e.filter(x=>x.offsetParent!==null).length), c=await page.$$eval('#slotsIn .slot',e=>e.filter(x=>x.offsetParent!==null).length); return a===6&&c===6 || `${a}/${c}`; });
+  await t('Slot sizes match the CAD skins', async()=>{ const d=await page.$$eval('#caseSlots .slot',e=>e.filter(x=>x.offsetParent!==null).map(x=>x.querySelector('.dim').textContent)); const want=['177.8 × 72.1','168.0 × 23.1','168.0 × 23.1','168.0 × 40.8','45.1 × 37.6','45.1 × 37.6','171.9 × 58.3','171.0 × 38.7','60.1 × 24.8','60.1 × 24.8','20.5 × 55.0','20.5 × 55.0'];
     return want.every((w,i)=>d[i].startsWith(w)) || d.join(' | '); });
   await t('3D canvas is drawing pixels', async()=>{ const n=await page.evaluate(()=>{ const c=document.getElementById('gl'); return c.width*c.height; }); return n>100000; });
 
@@ -50,13 +50,13 @@ const mainColor=async(sel)=>page.evaluate(s=>{ const c=document.querySelector(s)
   await t('Rejects a non-image file with a clear message', async()=>{ await page.setInputFiles('#file','fixtures/not_image.txt'); await page.waitForTimeout(200); const s=await page.textContent('#status'); return /not an image/.test(s)||s; });
   let tUp; await t('Uploads a 12 MP photo and fills the skin', async()=>{ tUp=Date.now(); await page.setInputFiles('#file','fixtures/photo_12mp.jpg'); await page.waitForFunction(()=>/added to/.test(document.getElementById('status').textContent)); tUp=Date.now()-tUp;
     const tag=await page.textContent('[data-slot="Base_Back_Plate"] .tag'); return tag==='Your art' || tag; });
-  await t('Resolution note shown after upload', async()=>{ const s=await page.textContent('#status'); return /ppi/.test(s)? s : false; });
+  await t('Resolution note shown after upload', async()=>{ const s=await page.textContent('#status'); if (/ppi/.test(s)) console.log('     ('+s+')'); return /ppi/.test(s) || s; });
   await t('Counter shows skins with your art', async()=> (await page.textContent('#countMine')).includes('1 of 12'));
 
-  await t('Drag moves the photo', async()=>{ const box=await page.locator('#ed').boundingBox(); const before=await mainColor('#ed');
+  await t('Drag moves the photo', async()=>{ await page.locator('#ed').scrollIntoViewIfNeeded(); const box=await page.locator('#ed').boundingBox(); const before=await mainColor('#ed');
     await page.mouse.move(box.x+box.width/2,box.y+box.height/2); await page.mouse.down(); await page.mouse.move(box.x+box.width/2+80,box.y+box.height/2+20,{steps:6}); await page.mouse.up(); await page.waitForTimeout(150);
     const after=await mainColor('#ed'); return JSON.stringify(before)!==JSON.stringify(after) || 'canvas unchanged'; });
-  await t('Wheel resizes (size readout changes)', async()=>{ const box=await page.locator('#ed').boundingBox(); await page.mouse.move(box.x+box.width/2,box.y+box.height/2); await page.mouse.wheel(0,-300); await page.waitForTimeout(150); const z=await page.textContent('#zoomOut'); return z!=='100%' || z; });
+  await t('Wheel resizes (size readout changes)', async()=>{ await page.locator('#ed').scrollIntoViewIfNeeded(); const box=await page.locator('#ed').boundingBox(); await page.mouse.move(box.x+box.width/2,box.y+box.height/2); await page.mouse.wheel(0,-300); await page.waitForTimeout(150); const z=await page.textContent('#zoomOut'); return z!=='100%' || z; });
   await t('Fill resets size to 100%', async()=>{ await page.click('#bFill'); return (await page.textContent('#zoomOut'))==='100%'; });
   await t('Rotate 90° updates angle', async()=>{ await page.click('#bRot'); return (await page.textContent('#rotOut'))==='90°'; });
   await t('Angle slider works', async()=>{ await page.fill('#rot','-12'); await page.dispatchEvent('#rot','input'); return (await page.textContent('#rotOut'))==='-12°'; });
