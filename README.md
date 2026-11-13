@@ -30,6 +30,16 @@ Use HTTPS. Browsers only allow some features (e.g. reading large files) on secur
 To self-host these instead (no third-party requests), download the same versions, put them next to
 `index.html`, and change the URLs in the `<script type="importmap">` and the Google Fonts `<link>`.
 
+## Case versions
+
+The studio has a **Strap loops / Plain ends** switch (top right, next to the colour).
+Plain ends swaps the base model and gives End 01 / End 03 full skins with no strap cut-out;
+exports follow the selected version. The visitor's choice is remembered in their browser.
+
+Print files for both are in `print/`:
+- `3Bay_Case_Strap_Loops_P2S.3mf` (v33)
+- `3Bay_Case_Plain_Ends_P2S.3mf` (v34)
+
 ## Feature flags
 
 Near the top of the editor script:
@@ -62,7 +72,7 @@ of the app in a few short steps. Their choice is remembered in the browser (`loc
 cd tests
 npm install
 npm run setup     # installs Chromium for Playwright + makes the test photos
-npm test          # 38 core + 18 layer + 4 hosted-download + 15 "Your model" + 13 tour checks
+npm test          # 38 core + 18 layer + 12 case-version + 4 hosted-download + 15 "Your model" + 13 tour checks
 ```
 
 The tests serve `../index.html` and route the CDN libraries to the local npm copies, so they run offline.
