@@ -1,0 +1,5 @@
+node_modules/
+fixtures/photo_*.jpg
+*.png
+*.zip
+e2e_results.json
