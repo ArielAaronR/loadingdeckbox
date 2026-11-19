@@ -425,7 +425,7 @@ function renderPrice(){
   $('priceCount').textContent=`${q.plates.length} of ${q.of} plates`;
   $('priceTotal').textContent=money(q.total);
   const all=Object.values(PRICING.plates[variant]).reduce((t,x)=>t+x,0);
-  $('priceHint').textContent=`Plates are priced by size; you pay only for plates with your art. Box with art on every plate: ${money(PRICING.box+all)}.`;
+  $('priceHint').textContent=`Plates are priced by size; you pay only for plates with your art. With art on every plate: ${money(PRICING.box+all+(q.spring?PRICING.spring:0))}${q.spring?' (spring included)':''}.`;
 }
 let priceRaf=0; const priceSoon=()=>{ if (!priceRaf) priceRaf=requestAnimationFrame(()=>{ priceRaf=0; renderPrice(); }); };
 const status = t=>{$('status').textContent=t};

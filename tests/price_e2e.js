@@ -11,7 +11,7 @@ const res=[]; const t=async(n,f)=>{ let r; try{ r=await f(); }catch(e){ r=e.mess
   const total=()=>p.textContent('#priceTotal'), lines=()=>p.$$eval('#priceLines li',ls=>ls.map(l=>[...l.children].map(c=>c.textContent.trim()).join(' ')));
   const addText=async id=>{ await p.click(`[data-slot="${id}"]`); await p.waitForTimeout(150); await p.click('#addText'); await p.waitForTimeout(250); };
 
-  await t('Starts at the box price, no plates', async()=> ((await total())==='$30' && (await lines()).some(l=>/No plates yet/.test(l))) || (await total())+' '+(await lines()));
+  await t('Starts at the box price, no plates', async()=> ((await total())==='$30' && (await lines()).some(l=>/No plates yet/.test(l))) && /every plate: \$45\./.test(await p.textContent('#priceHint')) || (await total())+' '+(await lines()));
   await t('Every plate of each version has a price and they add up to $15', async()=>{
     for (const v of ['loops','plain']){ await p.click(`[data-variant="${v}"]`); await p.waitForTimeout(250);
       const r=await p.evaluate(()=>{ const ids=[...document.querySelectorAll('#slotsOut [data-slot],#slotsIn [data-slot]')].filter(e=>!e.hidden && e.offsetParent).map(e=>e.dataset.slot);
@@ -22,7 +22,7 @@ const res=[]; const t=async(n,f)=>{ let r; try{ r=await f(); }catch(e){ r=e.mess
     await p.click('[data-variant="loops"]'); await p.waitForTimeout(250); return true; });
   await addText('Lid_Top'); await addText('Base_Back_Plate');
   await t('Plates with art are added at their price (Lid top $3.50 + Back $2)', async()=> ((await total())==='$35.50' && (await lines()).includes('Lid top $3.50') && (await lines()).includes('Back $2')) || (await total())+' '+(await lines()));
-  await t('Spring add-on adds $5', async()=>{ await p.check('#springOn'); await p.waitForTimeout(100); return (await total())==='$40.50' || await total(); });
+  await t('Spring add-on adds $5', async()=>{ await p.check('#springOn'); await p.waitForTimeout(100); const h=await p.textContent('#priceHint'); return ((await total())==='$40.50' && /every plate: \$50 \(spring included\)/.test(h)) || (await total())+' '+h; });
   await t('Rectangle reprices the same plates (Back $1.50)', async()=>{ await p.click('[data-variant="plain"]'); await p.waitForTimeout(300);
     return ((await total())==='$40' && (await lines())[0].includes('Rectangle')) || (await total())+' '+(await lines()); });
   await t('Colour shows on the box line', async()=>{ await p.click('[data-fil="#2a2c30"]'); await p.waitForTimeout(150); return (await lines())[0].includes('Black') || (await lines())[0]; });
