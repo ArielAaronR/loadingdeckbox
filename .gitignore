@@ -2,3 +2,4 @@
 .venv/
 print/
 tools/
+node_modules/

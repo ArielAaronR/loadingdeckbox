@@ -1,0 +1,9 @@
+{
+  "name": "loading-deck",
+  "private": true,
+  "type": "module",
+  "description": "Static site + one Netlify Function (order artwork upload). The tests live in tests/.",
+  "dependencies": {
+    "@netlify/blobs": "11.1.7"
+  }
+}

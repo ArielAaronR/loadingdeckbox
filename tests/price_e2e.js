@@ -24,8 +24,8 @@ const res=[]; const t=async(n,f)=>{ let r; try{ r=await f(); }catch(e){ r=e.mess
   await t('Plates with art are added at their price (Lid top $3.50 + Back $2)', async()=> ((await total())==='$35.50' && (await lines()).includes('Lid top $3.50') && (await lines()).includes('Back $2')) || (await total())+' '+(await lines()));
   await t('Spring add-on adds $5', async()=>{ await p.check('#springOn'); await p.waitForTimeout(100); const h=await p.textContent('#priceHint'); return ((await total())==='$40.50' && /every plate: \$50 \(spring included\)/.test(h)) || (await total())+' '+h; });
   await t('Rectangle reprices the same plates (Back $1.50)', async()=>{ await p.click('[data-variant="plain"]'); await p.waitForTimeout(300);
-    return ((await total())==='$40' && (await lines())[0].includes('Rectangle')) || (await total())+' '+(await lines()); });
-  await t('Colour shows on the box line', async()=>{ await p.click('[data-fil="#2a2c30"]'); await p.waitForTimeout(150); return (await lines())[0].includes('Black') || (await lines())[0]; });
+    return ((await total())==='$40' && (await p.textContent('#priceBox')).includes('Rectangle')) || (await total())+' '+(await lines()); });
+  await t('Colour shows on the box line', async()=>{ await p.click('[data-fil="#2a2c30"]'); await p.waitForTimeout(150); const bx=await p.textContent('#priceBox'); return bx.includes('Black') || bx; });
   await t('Spring choice remembered after reload', async()=>{ await p.reload(); await load(); return (await p.isChecked('#springOn')) || 'not checked'; });
   await t('No script errors', ()=>errs.length===0 || errs.join(' | '));
   const pass=res.filter(Boolean).length; console.log(pass+'/'+res.length+' passed'); await b.close(); process.exit(pass===res.length?0:1); })();

@@ -68,6 +68,26 @@ plate that has the customer's art. Plate prices are by size (50¢ steps) and eac
 up to $15, so a box with art on every plate is $45 ($50 with the spring). Edit the prices in `PRICING` near the top of the editor script;
 `tests/price_e2e.js` checks that every plate has a price and that each version still adds up to $15.
 
+## Orders (Netlify)
+
+**Order this case** (bottom of the price panel) opens a short form: name, email, notes, plus the price
+summary. On **Send order**:
+
+1. The skins that have the customer's art are rendered at 600 ppi into a ZIP and uploaded in 3 MB pieces
+   to `/api/artwork` (`netlify/functions/artwork.mjs`, stored in Netlify Blobs). A full ZIP is often
+   20–30 MB, more than a Netlify form can carry, so the form gets a link instead.
+2. The `order` Netlify form is posted with: order number, case version, colour, spring, plates, total,
+   the artwork link, and an email subject of `[Loading Deck] Order <number> · <version> · <total>`.
+
+Opening the artwork link shows a page with a **Download ZIP** button. The link is unguessable but not
+password protected, so share it only with people who should see the customer's art.
+
+**One-time setup in the Netlify dashboard:**
+- *Forms* → enable form detection (then redeploy so the `order` form is picked up).
+- *Project configuration → Notifications → Emails and webhooks → Form submission notifications* → add an
+  email notification for the `order` form to your address. The address lives in Netlify, not in this repo.
+- Old artwork can be deleted under *Blobs* (store `order-artwork`).
+
 ## Feature flags
 
 Near the top of the editor script:
@@ -100,7 +120,7 @@ of the app in a few short steps. Their choice is remembered in the browser (`loc
 cd tests
 npm install
 npm run setup     # installs Chromium for Playwright + makes the test photos
-npm test          # 38 core + 18 layer + 12 case-version + 4 model-protection + 8 price + 14 divider + 11 jig-sheet + 4 hosted-download + 15 "Your model" + 13 tour checks
+npm test          # 38 core + 18 layer + 12 case-version + 4 model-protection + 8 price + 12 order-function + 9 order + 14 divider + 11 jig-sheet + 4 hosted-download + 15 "Your model" + 13 tour checks
 ```
 
 The tests serve `../index.html` and route the CDN libraries to the local npm copies, so they run offline.
