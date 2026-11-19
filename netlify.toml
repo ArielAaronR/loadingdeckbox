@@ -1,8 +1,0 @@
-# Static site (index.html at the root) + the order-artwork function in netlify/functions.
-[build]
-  publish = "."
-  command = ""
-
-[functions]
-  directory = "netlify/functions"
-  node_bundler = "esbuild"
