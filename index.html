@@ -395,12 +395,12 @@ const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const $ = id=>document.getElementById(id);
 /* ---------- price panel ----------
    Box + optional spring + each plate that has the customer's art. Plate prices are by size: every
-   plate of a case version together adds up to $50 (a full set is $80, $85 with the spring). */
+   plate of a case version together adds up to $15 (a full set is $45, $50 with the spring). */
 const PRICING={ box:30, spring:5, plates:{
-  loops:{ Lid_Top:12, Lid_Liner:10, Base_Back_Plate:6, Insert_Plate:6, Base_Front_Plate:4, Lid_Front_Plate:4,
-          End_Skin_01:2, End_Skin_03:2, Inner_End_01:1, Inner_End_03:1, Lid_Inner_01:1, Lid_Inner_03:1 },
-  plain:{ Lid_Top:11, Lid_Liner:9, Base_Back_Plate:6, Insert_Plate:6, Base_Front_Plate:4, Lid_Front_Plate:4,
-          End_Skin_01:3, End_Skin_03:3, Lid_End_01:1, Lid_End_03:1, Lid_Inner_01:1, Lid_Inner_03:1 } } };
+  loops:{ Lid_Top:3.5, Lid_Liner:2.5, Base_Back_Plate:2, Insert_Plate:2, Base_Front_Plate:1, Lid_Front_Plate:1,
+          End_Skin_01:0.5, End_Skin_03:0.5, Inner_End_01:0.5, Inner_End_03:0.5, Lid_Inner_01:0.5, Lid_Inner_03:0.5 },
+  plain:{ Lid_Top:3.5, Lid_Liner:2.5, Base_Back_Plate:1.5, Insert_Plate:1.5, Base_Front_Plate:1, Lid_Front_Plate:1,
+          End_Skin_01:1, End_Skin_03:1, Lid_End_01:0.5, Lid_End_03:0.5, Lid_Inner_01:0.5, Lid_Inner_03:0.5 } } };
 let springOn=false; try{ springOn=localStorage.getItem('loadingdeck:spring:v1')==='on'; }catch(e){}
 const money=n=>'$'+(Number.isInteger(n)?n:n.toFixed(2));
 function priceQuote(){
@@ -424,7 +424,8 @@ function renderPrice(){
   for (const x of q.plates) li('sub',x.label,money(x.price));
   $('priceCount').textContent=`${q.plates.length} of ${q.of} plates`;
   $('priceTotal').textContent=money(q.total);
-  $('priceHint').textContent=`Plates are priced by size and you pay only for plates with your art. Full set ${money(PRICING.box+50)}.`;
+  const all=Object.values(PRICING.plates[variant]).reduce((t,x)=>t+x,0);
+  $('priceHint').textContent=`Plates are priced by size; you pay only for plates with your art. Box with art on every plate: ${money(PRICING.box+all)}.`;
 }
 let priceRaf=0; const priceSoon=()=>{ if (!priceRaf) priceRaf=requestAnimationFrame(()=>{ priceRaf=0; renderPrice(); }); };
 const status = t=>{$('status').textContent=t};

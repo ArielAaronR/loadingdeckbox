@@ -64,9 +64,9 @@ a print-file link ever ends up in the page.
 ## Price panel
 
 The bottom of the Skins panel shows a running total: the box ($30), the optional spring (+$5) and every
-plate that has the customer's art. Plate prices are by size and each case version's plates add up to $50,
-so a full set is $80 ($85 with the spring). Edit the prices in `PRICING` near the top of the editor script;
-`tests/price_e2e.js` checks that every plate has a price and that each version still adds up to $50.
+plate that has the customer's art. Plate prices are by size (50¢ steps) and each case version's plates add
+up to $15, so a box with art on every plate is $45 ($50 with the spring). Edit the prices in `PRICING` near the top of the editor script;
+`tests/price_e2e.js` checks that every plate has a price and that each version still adds up to $15.
 
 ## Feature flags
 
