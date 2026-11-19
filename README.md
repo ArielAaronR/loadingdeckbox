@@ -61,6 +61,13 @@ copy of the case (every vertex snapped to a 0.8 mm grid, surfaces not closed): i
 screen but isn't printable or dimensionally faithful. `tests/protect_e2e.js` fails if an exact mesh or
 a print-file link ever ends up in the page.
 
+## Price panel
+
+The bottom of the Skins panel shows a running total: the box ($30), the optional spring (+$5) and every
+plate that has the customer's art. Plate prices are by size and each case version's plates add up to $50,
+so a full set is $80 ($85 with the spring). Edit the prices in `PRICING` near the top of the editor script;
+`tests/price_e2e.js` checks that every plate has a price and that each version still adds up to $50.
+
 ## Feature flags
 
 Near the top of the editor script:
@@ -93,7 +100,7 @@ of the app in a few short steps. Their choice is remembered in the browser (`loc
 cd tests
 npm install
 npm run setup     # installs Chromium for Playwright + makes the test photos
-npm test          # 38 core + 18 layer + 12 case-version + 4 model-protection + 14 divider + 11 jig-sheet + 4 hosted-download + 15 "Your model" + 13 tour checks
+npm test          # 38 core + 18 layer + 12 case-version + 4 model-protection + 8 price + 14 divider + 11 jig-sheet + 4 hosted-download + 15 "Your model" + 13 tour checks
 ```
 
 The tests serve `../index.html` and route the CDN libraries to the local npm copies, so they run offline.

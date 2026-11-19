@@ -100,6 +100,14 @@ input[type=color]{width:34px;height:28px;border:1px solid var(--line);border-rad
 .loading[hidden]{display:none}
 .hud-right{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
 .stack{display:flex;flex-direction:column;gap:14px}
+/* Price panel (bottom of the Skins panel) */
+.price{border-top:1px solid var(--line);padding:12px 16px 14px;display:flex;flex-direction:column;gap:6px;background:var(--panel)}
+.price-lines{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:3px;font-size:12.5px;max-height:172px;overflow-y:auto}
+.price-lines li{display:flex;justify-content:space-between;gap:8px;align-items:center}
+.price-lines li.sub{color:var(--muted);padding-left:10px}
+.price .amt{font:12.5px var(--f-mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+.price-total{display:flex;justify-content:space-between;align-items:baseline;border-top:1px solid var(--line);padding-top:7px;margin-top:2px;font-weight:600}
+#priceTotal{font:600 19px var(--f-mono);font-variant-numeric:tabular-nums}
 .upload-card{display:flex;flex-direction:column;gap:10px;align-items:flex-start;border:1px dashed var(--line);border-radius:8px;padding:14px;background:var(--bg)}
 .upload-card p{margin:0}
 .model-name{font:500 12.5px var(--f-mono);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;max-width:55%}
@@ -228,6 +236,12 @@ label.btn{position:relative}
           </div>
         </div>
       </div>
+    </div>
+    <div class="price case-only" id="pricePanel" role="region" aria-label="Price">
+      <div class="group-h"><span class="eyebrow">Price</span><span class="eyebrow" id="priceCount"></span></div>
+      <ul class="price-lines" id="priceLines"></ul>
+      <div class="price-total"><span>Total</span><b id="priceTotal" aria-live="polite">$30</b></div>
+      <p class="hint" id="priceHint"></p>
     </div>
   </aside>
 
@@ -379,6 +393,40 @@ const ORDER_IN = ['Lid_Liner','Insert_Plate','Inner_End_01','Inner_End_03','Lid_
 const S = Object.fromEntries(DATA.surfaces.map(s=>[s.id,s]));
 const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const $ = id=>document.getElementById(id);
+/* ---------- price panel ----------
+   Box + optional spring + each plate that has the customer's art. Plate prices are by size: every
+   plate of a case version together adds up to $50 (a full set is $80, $85 with the spring). */
+const PRICING={ box:30, spring:5, plates:{
+  loops:{ Lid_Top:12, Lid_Liner:10, Base_Back_Plate:6, Insert_Plate:6, Base_Front_Plate:4, Lid_Front_Plate:4,
+          End_Skin_01:2, End_Skin_03:2, Inner_End_01:1, Inner_End_03:1, Lid_Inner_01:1, Lid_Inner_03:1 },
+  plain:{ Lid_Top:11, Lid_Liner:9, Base_Back_Plate:6, Insert_Plate:6, Base_Front_Plate:4, Lid_Front_Plate:4,
+          End_Skin_01:3, End_Skin_03:3, Lid_End_01:1, Lid_End_03:1, Lid_Inner_01:1, Lid_Inner_03:1 } } };
+let springOn=false; try{ springOn=localStorage.getItem('loadingdeck:spring:v1')==='on'; }catch(e){}
+const money=n=>'$'+(Number.isInteger(n)?n:n.toFixed(2));
+function priceQuote(){
+  const P=PRICING.plates[variant], list=DATA.surfaces.filter(s=>!s.custom && inVariant(s));
+  const plates=list.filter(hasArt).map(s=>({id:s.id, label:s.label, price:P[s.id]??0})).sort((a,b)=>b.price-a.price);
+  const colour=document.querySelector('[data-fil][aria-pressed="true"]')?.textContent.trim()||'White';
+  const total=PRICING.box+(springOn?PRICING.spring:0)+plates.reduce((t,x)=>t+x.price,0);
+  return { version:variant==='plain'?'Rectangle':'Strap loops', colour, spring:springOn, plates, of:list.length, total };
+}
+function renderPrice(){
+  const q=priceQuote(), L=$('priceLines'); if (!L) return;
+  L.replaceChildren();
+  const li=(cls,label,amt)=>{ const e=document.createElement('li'); if (cls) e.className=cls;
+    if (typeof label==='string'){ const t=document.createElement('span'); t.textContent=label; e.append(t); } else e.append(label);
+    const a=document.createElement('span'); a.className='amt'; a.textContent=amt; e.append(a); L.append(e); return e; };
+  li('',`Box · ${q.version} · ${q.colour}`,money(PRICING.box));
+  const sp=document.createElement('label'); sp.className='check'; sp.innerHTML='<input type="checkbox" id="springOn"> Spring add-on';
+  sp.firstChild.checked=q.spring; sp.firstChild.onchange=e=>{ springOn=e.target.checked; try{ localStorage.setItem('loadingdeck:spring:v1',springOn?'on':'off'); }catch(_){} renderPrice(); };
+  li('',sp,(q.spring?'+':'')+money(PRICING.spring)).querySelector('.amt').style.opacity=q.spring?1:.45;
+  if (!q.plates.length) li('sub','No plates yet: add art to a skin','$0');
+  for (const x of q.plates) li('sub',x.label,money(x.price));
+  $('priceCount').textContent=`${q.plates.length} of ${q.of} plates`;
+  $('priceTotal').textContent=money(q.total);
+  $('priceHint').textContent=`Plates are priced by size and you pay only for plates with your art. Full set ${money(PRICING.box+50)}.`;
+}
+let priceRaf=0; const priceSoon=()=>{ if (!priceRaf) priceRaf=requestAnimationFrame(()=>{ priceRaf=0; renderPrice(); }); };
 const status = t=>{$('status').textContent=t};
 let dirty=true; function invalidate(){ dirty=true; }
 const api={setLid:()=>{}, focus:()=>{}, pend:[], overlay:s=>api.pend.push(s), removeOverlay:()=>{}, setMode:()=>{}, clearModel:()=>{}};   // filled in once the 3D view is ready
@@ -526,6 +574,7 @@ function refreshPreview(s){
   if (tag){ tag.textContent=hasArt(s)?'Your art':'Sample'; tag.classList.toggle('mine',hasArt(s)); }
   saveSoon(s);
   const vis=visibleSurfaces(), n=vis.filter(hasArt).length; $('countMine').textContent = n?`${n} of ${vis.length} with your art`:'';
+  priceSoon();
 }
 
 /* ---------- slot list ---------- */
@@ -954,7 +1003,7 @@ function setVariant(v, quiet=false){
   for (const s of DATA.surfaces) if (!s.custom){ slotInfo(s); if (s.alt || s.variants) refreshPreview(s); }
   jigState();
   $('verTag').textContent = (v==='plain' ? 'v35 rectangle' : 'v33 barebones')+' · snap-on UV skins · 1:1 mm';
-  api.setVariant?.(v); syncDivider(); api.setDivider?.(divOn);
+  api.setVariant?.(v); syncDivider(); api.setDivider?.(divOn); priceSoon();
   if (mode==='case'){ if (!inVariant(S[current])) select('Lid_Top',false); else if (S[current].alt) layoutEditor(); }
   try{ localStorage.setItem('skin-studio-variant',v); }catch(e){}
   if (!quiet) status(v==='plain' ? 'Rectangle: no end caps. Each end gets a base skin and a lid skin.' : 'Strap loops: end caps with strap bars, skins around them.');
@@ -1155,7 +1204,7 @@ try{
 }catch(e){ $('loading').textContent='Could not load the case model. Reload the page to try again.'; }
 
 document.querySelectorAll('[data-fil]').forEach(b=>b.onclick=()=>{ caseMat.color.set(b.dataset.fil); invalidate();
-  document.querySelectorAll('[data-fil]').forEach(x=>x.setAttribute('aria-pressed',x===b)); });
+  document.querySelectorAll('[data-fil]').forEach(x=>x.setAttribute('aria-pressed',x===b)); priceSoon(); });
 
 /* ---------- your own model (3D side) ---------- */
 const customRoot=new THREE.Group(); customRoot.visible=false; scene.add(customRoot);
