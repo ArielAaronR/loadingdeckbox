@@ -91,7 +91,11 @@ button:focus-visible,input:focus-visible,label.btn:focus-within{outline:2px soli
 .field{display:grid;grid-template-columns:64px minmax(0,1fr) 52px;gap:8px;align-items:center;font-size:12.5px;color:var(--muted)}
 .field output{font:12px var(--f-mono);text-align:right;color:var(--fg);font-variant-numeric:tabular-nums}
 input[type=range]{width:100%;accent-color:var(--accent)}
-input[type=color]{width:34px;height:28px;border:1px solid var(--line);border-radius:6px;padding:2px;background:var(--panel)}
+input[type=color]{-webkit-appearance:none;appearance:none;width:34px;height:28px;border:1px solid var(--line);border-radius:6px;padding:2px;background:var(--panel);cursor:pointer}
+input[type=color]::-webkit-color-swatch-wrapper{padding:0}
+input[type=color]::-webkit-color-swatch{border:0;border-radius:4px}
+input[type=color]::-moz-color-swatch{border:0;border-radius:4px}
+input[type=color]:disabled{opacity:.45;cursor:default}
 .check{display:inline-flex;gap:6px;align-items:center;font-size:12.5px;color:var(--muted)}
 .hint{font-size:12px;color:var(--muted);margin:0}
 .export{border-top:1px solid var(--line);padding:14px 16px;display:flex;flex-direction:column;gap:8px;background:var(--panel)}
@@ -715,13 +719,15 @@ function renderLayers(){
     ol.appendChild(li);
   });
 }
+// only write a control's value when it differs: rewriting an open colour picker makes Firefox's picker jump
+const setVal=(el,v)=>{ v=String(v); if (el.value.toLowerCase()!==v.toLowerCase()) el.value=v; };
 function syncControls(){
   if (!S[current]) return;
   const s=S[current], st=s.st, L=selLayer(s);
   $('edName').textContent=s.label;
   $('edDim').textContent=`${s.w.toFixed(1)} × ${s.h.toFixed(1)} mm · ${Math.round(s.w*PPMM)} × ${Math.round(s.h*PPMM)} px @600`;
-  $('bgOn').checked=st.bgOn; $('bgCol').value=st.bg;
-  $('numRow').hidden = s.id!=='Lid_Liner'; syncDivider(); $('numOn').checked=st.numOn; $('numCol').value=st.numCol; $('numCol').disabled=!st.numOn;
+  $('bgOn').checked=st.bgOn; setVal($('bgCol'),st.bg);
+  $('numRow').hidden = s.id!=='Lid_Liner'; syncDivider(); $('numOn').checked=st.numOn; setVal($('numCol'),st.numCol); $('numCol').disabled=!st.numOn;
   renderLayers();
   $('props').hidden=!L;
   if (L){
@@ -733,9 +739,9 @@ function syncControls(){
     if (L.type==='text'){
       if (document.activeElement!==$('txt')) $('txt').value=L.text; $('font').value=L.font;
       $('tBold').setAttribute('aria-pressed',!!L.bold); $('tItal').setAttribute('aria-pressed',!!L.italic);
-      $('tCol').value=L.color; $('tStroke').value=L.stroke; $('tStrokeW').value=L.strokeW; $('tStrokeWOut').textContent=L.strokeW.toFixed(2)+' mm';
+      setVal($('tCol'),L.color); setVal($('tStroke'),L.stroke); $('tStrokeW').value=L.strokeW; $('tStrokeWOut').textContent=L.strokeW.toFixed(2)+' mm';
       $('tSpace').value=L.spacing||0; $('tSpaceOut').textContent=(L.spacing||0).toFixed(2);
-      const fx=fxOf(L); document.querySelectorAll('[data-fx]').forEach(el=>{ const v=getFx(fx,el.dataset.fx); if (el.type==='checkbox') el.checked=!!v; else el.value=v; });
+      const fx=fxOf(L); document.querySelectorAll('[data-fx]').forEach(el=>{ const v=getFx(fx,el.dataset.fx); if (el.type==='checkbox') el.checked=!!v; else setVal(el,v); });
       document.querySelectorAll('[data-out]').forEach(o=>o.textContent=fmtFx(o.dataset.out,getFx(fx,o.dataset.out)));
     }
     $('bLock').setAttribute('aria-pressed',!!L.locked); $('bLock').textContent=L.locked?'Locked':'Lock'; $('lockMsg').hidden=!L.locked; $('props').classList.toggle('locked',!!L.locked);
@@ -890,7 +896,8 @@ $('font').onchange=e=>{ const L=selLayer(); if(!L||L.type!=='text') return; if (
 $('tBold').onclick=withSel((s,L)=>{ L.bold=!L.bold; });
 $('tItal').onclick=withSel((s,L)=>{ L.italic=!L.italic; });
 $('tCol').oninput=e=>{ const L=selLayer(); if(!L) return; if (L.locked) return; L.color=e.target.value; changedFast(); };
-$('tStroke').oninput=e=>{ const L=selLayer(); if(!L) return; if (L.locked) return; L.stroke=e.target.value; if(!L.strokeW){ L.strokeW=0.3; } changed(); };
+$('tStroke').oninput=e=>{ const L=selLayer(); if(!L) return; if (L.locked) return; L.stroke=e.target.value; if(!L.strokeW){ L.strokeW=0.3; $('tStrokeW').value=0.3; $('tStrokeWOut').textContent='0.30 mm'; } changedFast(); };
+$('tStroke').onchange=()=>changed();
 $('tStrokeW').oninput=e=>{ const L=selLayer(); if(!L) return; if (L.locked) return; L.strokeW=+e.target.value; $('tStrokeWOut').textContent=L.strokeW.toFixed(2)+' mm'; changedFast(); };
 $('tSpace').oninput=e=>{ const L=selLayer(); if(!L) return; if (L.locked) return; L.spacing=+e.target.value; $('tSpaceOut').textContent=L.spacing.toFixed(2); changedFast(); };
 /* effects */
@@ -901,9 +908,10 @@ document.querySelectorAll('[data-fx]').forEach(el=>{ const fire=()=>{ const L=se
     const v= el.type==='checkbox' ? el.checked : el.type==='range' ? +el.value : el.value; setFx(fx,p,v);
     // touching a sub-setting turns its effect on
     const grp=p.split('.')[0]; if (p.includes('.') && !p.endsWith('.on') && fx[grp] && 'on' in fx[grp]) fx[grp].on=true;
+    const cb=document.querySelector(`[data-fx="${grp}.on"]`); if (cb && fx[grp]) cb.checked=!!fx[grp].on;
     const o=document.querySelector(`[data-out="${p}"]`); if (o) o.textContent=fmtFx(p,v);
-    if (el.type==='range') changedFast(); else changed(); };
-  el.addEventListener(el.type==='checkbox'?'change':'input', fire); if (el.type==='range') el.addEventListener('change',()=>syncControls()); });
+    if (el.type==='range' || el.type==='color') changedFast(); else changed(); };
+  el.addEventListener(el.type==='checkbox'?'change':'input', fire); if (el.type==='range'||el.type==='color') el.addEventListener('change',()=>syncControls()); });
 const PRESETS={
   none:  L=>{ L.fx=defaultFx(); L.strokeW=0; },
   neon:  L=>{ L.fx=defaultFx(); L.color='#ffffff'; L.strokeW=0.15; L.stroke='#6fdad1'; Object.assign(L.fx.glow,{on:true,color:'#1cb2d1',size:2.2}); },
@@ -917,7 +925,8 @@ $('bLock').onclick=()=>{ const L=selLayer(); if (!L) return; L.locked=!L.locked;
 $('numOn').onchange=e=>{ S.Lid_Liner.st.numOn=e.target.checked; changed(); };
 $('numCol').oninput=e=>{ S.Lid_Liner.st.numCol=e.target.value; changedFast(); };
 $('bgOn').onchange=e=>{ S[current].st.bgOn=e.target.checked; changed(); };
-$('bgCol').oninput=e=>{ const st=S[current].st; st.bg=e.target.value; st.bgOn=true; changed(); };
+$('bgCol').oninput=e=>{ const st=S[current].st; st.bg=e.target.value; st.bgOn=true; $('bgOn').checked=true; changedFast(); };
+$('bgCol').onchange=()=>changed();
 new ResizeObserver(()=>layoutEditor()).observe(wrap);
 /* ---------- your own model: any flat face becomes a printable area ---------- */
 /* Feature flags. "Your model" is built and tested but switched off for now.

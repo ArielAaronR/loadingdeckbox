@@ -49,5 +49,14 @@ await t('Export includes the neon text (white pixels present)', async()=>{ await
 await p.screenshot({path:'layers_editor.png'});
 await t('All layers survive a reload', async()=>{ await p.waitForTimeout(700); await p.reload(); await p.waitForFunction(()=>document.getElementById('loading').hidden); await p.waitForTimeout(3000);
   await p.click('[data-slot="Base_Back_Plate"]'); await p.waitForTimeout(300); const names=await p.$$eval('#layerList .nm',e=>e.map(x=>x.textContent)); return names.length===3 && names.includes('BLADER ARENA') || names.join(','); });
+await t('Colour pickers are never rewritten while open (Firefox picker)', async()=>{ await p.click('[data-slot="Lid_Top"]'); await p.waitForTimeout(200); await p.click('#addText'); await p.waitForTimeout(300);
+  return await p.evaluate(async()=>{ const d=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value'); let writes=0;
+    Object.defineProperty(HTMLInputElement.prototype,'value',{configurable:true,get(){return d.get.call(this);},set(v){ if (this.type==='color') writes++; d.set.call(this,v);}});
+    const fire=(el,c,ev)=>{ d.set.call(el,c); el.dispatchEvent(new Event(ev,{bubbles:true})); }, frame=()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+    const els=[document.getElementById('bgCol'),document.getElementById('tCol'),document.getElementById('tStroke'),document.querySelector('[data-fx="shadow.color"]')];
+    for (const el of els){ for (const c of ['#112233','#445566','#778899']){ fire(el,c,'input'); await frame(); } fire(el,'#778899','change'); await frame(); }
+    Object.defineProperty(HTMLInputElement.prototype,'value',d);
+    const ok=writes===0 && document.getElementById('bgOn').checked && document.getElementById('fxShOn').checked && document.getElementById('tStrokeW').value>0;
+    return ok || `writes ${writes} bgOn ${document.getElementById('bgOn').checked} shadow ${document.getElementById('fxShOn').checked}`; }); });
 await t('No script errors', ()=>errs.length===0 || errs.join('|'));
 console.log(res.filter(r=>r[1]).length+'/'+res.length+' passed'); await b.close();})();
